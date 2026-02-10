@@ -60,33 +60,39 @@ function App() {
 
   // Real-time subscription
   useEffect(() => {
-    if (isTestMode) return;
+    if (isTestMode || !session) return;
+
+    console.log('📡 Setting up Realtime subscription for user:', session.user.id);
 
     const channel = supabase
       .channel('realtime_locations')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'locations'
+        table: 'locations',
+        filter: `user_id=eq.${session.user.id}`
       }, (payload) => {
+        console.log('🔄 Realtime event received:', payload.eventType);
         if (payload.eventType === 'INSERT') {
           setLocations(prev => {
-            // Check if record already exists to avoid duplicates
             if (prev.some(loc => loc.id === payload.new.id)) return prev;
             return [...prev, payload.new].sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
           });
         } else if (payload.eventType === 'UPDATE') {
           setLocations(prev => prev.map(loc => loc.id === payload.new.id ? payload.new : loc));
         } else if (payload.eventType === 'DELETE') {
-          setLocations(prev => prev.filter(loc => loc.id === payload.old.id));
+          setLocations(prev => prev.filter(loc => loc.id !== payload.old.id));
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('🔌 Realtime status:', status);
+      });
 
     return () => {
+      console.log('🔌 Removing Realtime channel');
       supabase.removeChannel(channel);
     };
-  }, [isTestMode]);
+  }, [isTestMode, session]);
 
   const fetchLocations = async () => {
     setLoading(true);

@@ -20,8 +20,14 @@ OCR_SCRIPT = os.path.join(os.path.dirname(__file__), "ocr.swift")
 # Common device names we expect to see
 DEVICES = ["Lucas’ Backpack AirTag", "Jolie’s scooter", "Keys", "Wallet"]
 
-def get_supabase_client() -> Client:
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
+# Supabase Client
+USER_ID = os.getenv('USER_ID')
+if not USER_ID:
+    print("❌ ERROR: USER_ID not found in environment variables.")
+    print("Please add USER_ID to your scripts/.env file.")
+    exit(1)
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def run_ocr(image_path):
     """Runs the swift OCR script and returns the lines of text."""
@@ -113,7 +119,9 @@ def sync_screenshot(file_path):
         return False
     
     date_str, time_str = match.groups()
-    timestamp_iso = f"{date_str}T{time_str.replace('-', ':')}"
+    # Toronto is UTC-5 (EST) or UTC-4 (EDT). For simplicity, we use -05:00 
+    # as the user is in Toronto.
+    timestamp_iso = f"{date_str}T{time_str.replace('-', ':')}-05:00"
     
     lines = run_ocr(file_path)
     if not lines:
@@ -125,7 +133,6 @@ def sync_screenshot(file_path):
         print("⏩ No device locations found in screenshot sidebar.")
         return False
 
-    supabase = get_supabase_client()
     success_count = 0
 
     for loc in found_locations:
