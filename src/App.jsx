@@ -35,6 +35,15 @@ function App() {
   const [deviceName, setDeviceName] = useState('My AirTag');
   const [deviceEmoji, setDeviceEmoji] = useState('🏷️');
 
+  // Date filtering state
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    const options = { timeZone: 'America/Toronto', year: 'numeric', month: '2-digit', day: '2-digit' };
+    const parts = new Intl.DateTimeFormat('en-CA', options).formatToParts(now);
+    const get = (type) => parts.find(p => p.type === type)?.value || '';
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  });
+
   // Load locations from Supabase on mount
   useEffect(() => {
     fetchLocations();
@@ -308,8 +317,13 @@ function App() {
   };
 
   const filteredLocations = useMemo(() => {
-    return locations.filter(loc => selectedDeviceId === 'all' || loc.device_name === selectedDeviceId);
-  }, [locations, selectedDeviceId]);
+    return locations.filter(loc => {
+      const deviceMatch = selectedDeviceId === 'all' || loc.device_name === selectedDeviceId;
+      // Compare only the YYYY-MM-DD part of the ISO string
+      const dateMatch = loc.datetime.startsWith(selectedDate);
+      return deviceMatch && dateMatch;
+    });
+  }, [locations, selectedDeviceId, selectedDate]);
 
   const sortedFiltered = useMemo(() => {
     return [...filteredLocations].sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
@@ -419,6 +433,18 @@ function App() {
 
         <div className="history-section">
           <h2><span>🕒</span> History</h2>
+
+          <div className="filter-group">
+            <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
+              Filter by Date
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="date-picker-filter"
+            />
+          </div>
 
           <div className="device-filters">
             <div

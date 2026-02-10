@@ -482,6 +482,32 @@ input:checked+.slider:before {
   text-overflow: ellipsis;
 }
 
+.date-picker-filter {
+  width: 100%;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+}
+
+.date-picker-filter:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.date-picker-filter::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
 .btn-logout {
   background: rgba(239, 68, 68, 0.15);
   color: #f87171;
