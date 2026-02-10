@@ -43,6 +43,36 @@ function App() {
     localStorage.setItem('isTestMode', isTestMode);
   }, [isTestMode]);
 
+  // Real-time subscription
+  useEffect(() => {
+    if (isTestMode) return;
+
+    const channel = supabase
+      .channel('realtime_locations')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'locations'
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setLocations(prev => {
+            // Check if record already exists to avoid duplicates
+            if (prev.some(loc => loc.id === payload.new.id)) return prev;
+            return [...prev, payload.new].sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          setLocations(prev => prev.map(loc => loc.id === payload.new.id ? payload.new : loc));
+        } else if (payload.eventType === 'DELETE') {
+          setLocations(prev => prev.filter(loc => loc.id === payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isTestMode]);
+
   const fetchLocations = async () => {
     setLoading(true);
     if (isTestMode) {
