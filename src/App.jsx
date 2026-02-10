@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import './App.css';
 import L from 'leaflet';
 import { supabase } from './supabaseClient';
+import Auth from './Auth';
 
 /**
  * SQL for Database Update:
@@ -19,6 +20,7 @@ function App() {
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [datetime, setDatetime] = useState('');
+  const [session, setSession] = useState(null);
   const [addressSuggestions, setAddressSuggestions] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [isTestMode, setIsTestMode] = useState(() => {
@@ -42,6 +44,19 @@ function App() {
   useEffect(() => {
     localStorage.setItem('isTestMode', isTestMode);
   }, [isTestMode]);
+
+  // Auth session listener
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Real-time subscription
   useEffect(() => {
@@ -225,7 +240,8 @@ function App() {
       lng: coords.lng,
       datetime: finalIsoString,
       device_name: deviceName,
-      device_emoji: deviceEmoji
+      device_emoji: deviceEmoji,
+      user_id: session?.user?.id
     };
 
     if (isTestMode) {
@@ -324,6 +340,10 @@ function App() {
     return null;
   };
 
+  if (!session && !isTestMode) {
+    return <Auth />;
+  }
+
   return (
     <div className={`app-container ${isTestMode ? 'test-mode-active' : ''}`}>
       <div className="sidebar">
@@ -339,6 +359,13 @@ function App() {
         </div>
 
         {isTestMode && <div className="test-mode-banner">🧪 Using LocalStorage Database</div>}
+
+        <div className="user-profile">
+          <div className="user-info">
+            <span className="user-email">{session?.user?.email}</span>
+          </div>
+          <button className="btn-logout" onClick={() => supabase.auth.signOut()}>Logout</button>
+        </div>
 
         <div className="form-section">
           <h2><span>➕</span> Add Location</h2>

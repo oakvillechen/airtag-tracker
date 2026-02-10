@@ -155,7 +155,8 @@ def sync_screenshot(file_path):
                     'lat': lat,
                     'lng': lng,
                     'datetime': timestamp_iso,
-                    'device_emoji': "🎒" if "Backpack" in device_name else "🛴" if "scooter" in device_name else "🏷️"
+                    'device_emoji': "🎒" if "Backpack" in device_name else "🛴" if "scooter" in device_name else "🏷️",
+                    'user_id': os.getenv('USER_ID')
                 }
                 supabase.table('locations').insert(payload).execute()
                 print(f"✅ Synced: {device_name} -> {address} ({lat}, {lng})")
