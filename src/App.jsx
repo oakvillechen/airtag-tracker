@@ -229,16 +229,31 @@ function App() {
     }
   };
 
-  // Unique devices listed in history
-  const devices = useMemo(() => {
+  // Unique devices listed in history with stable color assignment
+  const deviceConfig = useMemo(() => {
+    const COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ef4444'];
     const map = new Map();
-    locations.forEach(loc => {
+    let colorIndex = 0;
+
+    // Sort locations by time to get consistent order for color assignment
+    const sorted = [...locations].sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+    sorted.forEach(loc => {
       if (!map.has(loc.device_name)) {
-        map.set(loc.device_name, loc.device_emoji || '🏷️');
+        map.set(loc.device_name, {
+          name: loc.device_name,
+          emoji: loc.device_emoji || '🏷️',
+          color: COLORS[colorIndex % COLORS.length]
+        });
+        colorIndex++;
       }
     });
-    return Array.from(map.entries()).map(([name, emoji]) => ({ name, emoji }));
+    return Array.from(map.values());
   }, [locations]);
+
+  const getDeviceColor = (name) => {
+    return deviceConfig.find(d => d.name === name)?.color || '#6366f1';
+  };
 
   const filteredLocations = useMemo(() => {
     return locations.filter(loc => selectedDeviceId === 'all' || loc.device_name === selectedDeviceId);
@@ -258,12 +273,12 @@ function App() {
 
   const polylinePositions = sortedFiltered.map(loc => [loc.lat, loc.lng]);
 
-  const createCustomIcon = (emoji, index) => {
+  const createCustomIcon = (emoji, index, color) => {
     return L.divIcon({
       className: 'custom-marker',
       html: `
-        <div class="marker-emoji">${emoji}</div>
-        <div class="marker-number">${index + 1}</div>
+        <div class="marker-emoji" style="border-color: ${color}">${emoji}</div>
+        <div class="marker-number" style="background: ${color}">${index + 1}</div>
       `,
       iconSize: [40, 40],
       iconAnchor: [20, 40],
@@ -308,7 +323,7 @@ function App() {
                 placeholder="e.g. Keys"
               />
               <datalist id="device-history">
-                {devices.map(d => <option key={d.name} value={d.name} />)}
+                {deviceConfig.map(d => <option key={d.name} value={d.name} />)}
               </datalist>
             </div>
             <div className="form-group" style={{ width: '60px' }}>
@@ -349,11 +364,12 @@ function App() {
             >
               All Devices
             </div>
-            {devices.map(d => (
+            {deviceConfig.map(d => (
               <div
                 key={d.name}
                 className={`filter-chip ${selectedDeviceId === d.name ? 'active' : ''}`}
                 onClick={() => setSelectedDeviceId(d.name)}
+                style={selectedDeviceId === 'all' || selectedDeviceId === d.name ? { borderLeft: `4px solid ${d.color}` } : {}}
               >
                 {d.emoji} {d.name}
               </div>
@@ -391,15 +407,39 @@ function App() {
               attribution='&copy; OpenStreetMap'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <Polyline positions={polylinePositions} color="#6366f1" weight={4} opacity={0.6} dashArray="10, 10" />
+            {/* Render paths per device */}
+            {deviceConfig.map(dev => {
+              if (selectedDeviceId !== 'all' && selectedDeviceId !== dev.name) return null;
+              const pathPositions = sortedFiltered
+                .filter(loc => loc.device_name === dev.name)
+                .map(loc => [loc.lat, loc.lng]);
+
+              return pathPositions.length > 1 ? (
+                <Polyline
+                  key={`path-${dev.name}`}
+                  positions={pathPositions}
+                  color={dev.color}
+                  weight={4}
+                  opacity={0.6}
+                  dashArray="10, 10"
+                />
+              ) : null;
+            })}
+
             {sortedFiltered.map((loc, idx) => (
-              <Marker key={loc.id} position={[loc.lat, loc.lng]} icon={createCustomIcon(loc.device_emoji || '📍', idx)}>
+              <Marker
+                key={loc.id}
+                position={[loc.lat, loc.lng]}
+                icon={createCustomIcon(loc.device_emoji || '📍', idx, getDeviceColor(loc.device_name))}
+              >
                 <Tooltip direction="top" offset={[0, -40]} permanent opacity={0.9}>
                   <span style={{ fontWeight: 800 }}>{formatTimeOnly(loc.datetime)}</span>
                 </Tooltip>
                 <Popup>
                   <div style={{ padding: '4px' }}>
-                    <strong style={{ fontSize: '1rem' }}>{loc.device_emoji} {loc.device_name}</strong><br />
+                    <strong style={{ fontSize: '1.1rem', color: getDeviceColor(loc.device_name) }}>
+                      {loc.device_emoji} {loc.device_name}
+                    </strong><br />
                     <small style={{ color: '#64748b' }}>{formatTorontoTime(loc.datetime)}</small><br />
                     <div style={{ marginTop: '4px', fontSize: '0.85rem' }}>{loc.address}</div>
                   </div>

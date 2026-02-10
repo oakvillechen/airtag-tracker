@@ -339,7 +339,7 @@ input:checked+.slider:before {
   border-radius: 50%;
   font-size: 1.25rem;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-  border: 2px solid #6366f1;
+  border: 2px solid transparent;
 }
 
 .marker-number {
